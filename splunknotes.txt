@@ -1,0 +1,179 @@
+user1:58072312
+
+splunks job is to collect event data and analyze the event data
+
+this is built as a sandbox to show security information
+- security application 
+- most people with Splunk on their resume is reading dashboards and emailing data to other people
+    - if you can perform your own searches by hand, stats, table, eval, map, this makes you extremely valuable
+        - abstract flags
+            predict
+            pivot
+            overlap
+            rex (field separation by regex)
+
+splunk corporate has a splunk fundamentals class 
+- youll need to learn basic internals that really is kind of boring on the front end
+- doesnt really have any day-to-day applications in relation to security
+
+github.com data sets
+- Boss of the SOC
+- 1 month interval of datasets
+- https://github.com/splunk/botsv2
+- https://lolbas-project.github.io/# - Living off the Land (fileless malware and abusing windows functions for fun and profit)
+
+- splunk enterprise downloads
+- you need to go to splunk.com and setup a splunk.com account
+- splunk.com/downloads, free 60 day trial available
+- use the BOTS dataset to recreate what we are doing here
+
+this lesson is about splunk search and searching for specific events
+- user interface
+- basic search
+
+within splunk, there are splunk apps:
+- the only one we have at the moment is Search & Reporting
+- Apps can do different things
+    - maybe a Palo Alto app, pretty graphs
+    - Palo Alto Networks Add-on for Splunk
+    - Splunk is quite modular when it comes to apps and the things it can do
+
+Search & Reporting
+- case sensitive
+- Know what timeframe you are looking for in a given period
+- 24 hours? today? all time? realtime?
+- Relative searching
+- Realtime searches, as data comes in, it is passed to the search function
+- read the documentation if you need to define your own search parameters:
+   https://docs.splunk.com/Documentation/Splunk/8.0.3/Search/Selecttimerangestoapply?ref=hk
+- Splunk Community is also a great resource but most of it is out of date
+- Splunk Slack channel but you may need to be a Splunk customer and need to be invited
+- Google is your friend (google.com then search "site:docs.splunk.com")
+
+- Navigate to Presets, select interval, All Time
+
+Indexes:
+- different data can be configured here, some data you have to configure to index
+- allows you to add data to different indexes and segregate duties to different users
+- effectively a folder or directory on a disk
+
+Roles:
+- Search Head and Indexer
+- In this case, both applications are running on the same server
+- If you have more load, you can have additional search heads 
+
+You can also specify time intervals on the commandline
+- Specify the earliest day we want to look at and then the latest day we want to look at
+- "index=botsv2 earliest=08/01/2017:00:00:00 latest=08/01/2017:01:59:59"
+- Splunk can be very fast if you are narrowing down your search query
+
+Events:
+- can be any kind of data
+- words
+- temperatures, numerical data
+- there is a large set of variability in what splunk events can have
+- Default events:
+    - _time - time that the event claims it happened (not the time splunk received the data)
+    - host - device that splunk believes generated the event
+        append events to the end of your search, like so:
+        index=botsv2 earliest=08/01/2017:00:00:00 latest=08/01/2017:01:59:59 host=venus
+        - would denote events from the host named venus
+    - source - where the event was ingested from
+        - Perfmon:Process
+        - WinRegistry
+    - sourcetype - type of data, rather than source
+        - most environments, this will be the same, with UDP data, they may not be the same
+
+searching tips:
+- you can Shift+Enter to create a line break in the search field, useful for readability
+- explicit search intervals in the search field will override the gui selectors for search intervals
+- earliest=-5y, latest=now - this will show you the last 5 years of data, (relative from now)
+    - same for minutes, hours etc...
+    - https://docs.splunk.com/Documentation/Splunk/8.0.3/Search/Specifytimemodifiersinyoursearch
+
+Lets talk about Pipe commands
+- Splunk supports piping data
+- could pipe stuff to say the stats function
+    - in this case we are just going to count stuff
+
+    index=botsv2 
+earliest=08/01/2017:00:00:00 
+latest=08/01/2017:01:59:59
+| stats count by sourcetype
+
+- pipe the output of stats into count ("stats count by sourcetype | sort count desc"
+    - there are lots and lots and lots of options for stats
+- pipe into timechart 
+    - visualize data ("click Visualization")
+
+index=botsv2 
+earliest=08/01/2017:00:00:00 
+latest=08/01/2017:01:59:59
+| timechart count by sourcetype
+
+Modes
+- Smart mode enabled
+    - reads data out of index, adds data that it can to the menu on the left
+- Fast mode
+    - does not do field extraction
+    - depending on data and disk, can be 2-3x faster than Smart mode (with field extraction)
+
+Dashboards:
+- make your search, Save as (top left corner above search button)
+    - Save as Dashboard
+        - we will build a dashboard
+            - saves your query as a dashboard
+            - name the dashboard, description
+    - GUI dashboard for quick viewing
+
+Sourcetypes:
+- click and item in the search view to add it to the search:
+index=botsv2  earliest=08/01/2017:00:00:00  latest=08/01/2017:23:59:59 sourcetype="wineventlog:security"
+- make this data into a table, useful for limiting things for dashboards (where so much data would be overwhelming)
+- stream:ip: src_ip, dest_ip, bytes_in, bytes_out
+   
+Searching specifics
+- GPO will require you to manually enable the logging of New_Process creation
+- netexe is the swissarmy knife
+- SVC host is useful too but you have to know what its doing (it does a lot)
+- powershell is often used because it is not flagged by antivirus, (but lots of things can be launched from here)
+- New_Process_Name=*powershell*
+- Process_Command_Line=*-enc*
+    encoded powershell events in base64
+- globbing commands *powershell*
+    - not all located in the same place, so globe the absolute location
+index=botsv2  earliest=08/01/2017:00:00:00  latest=08/31/2017:23:59:59 
+sourcetype="wineventlog:security" EventCode=4688 New_Process_Name=*powershell* Process_Command_Line=*-enc*
+this will locate a fileless malware attack (pipe the data into | base64 to decode and find out what this function is doing)
+
+Firewall Traffic
+- some data are not very good at separating data, 
+    - may just give you comma delimited data that you will have to do something with  
+
+Eval
+- make new columns based on data
+index=botsv2  earliest=08/01/2017:00:00:00  latest=08/31/2017:23:59:59 sourcetype="*" sourcetype="stream:ip"  src_ip="71.39.18.125" dest_ip="172.31.10.10"
+| table src_ip dest_ip bytes_in bytes_out
+| eval totalbytes=bytes_in+bytes_out
+- adds a new column totalbytes that is the sum of bytes_in and bytes_out
+
+Statistics
+- standard deviation - statistic average away from the mean
+index=botsv2  earliest=08/01/2017:00:00:00  latest=08/31/2017:23:59:59 sourcetype="*" sourcetype="stream:ip"
+| stats  count by src_ip
+| eventstats avg(count) stdev(count)
+| sort count desc
+| eval sigma=avg+(3*stdev)
+| eval toobig=if(count>sigma,1,0)
+| table src_ip count sigma toobig
+| search toobig=1
+
+
+Takeaways:
+- if things are happening too often, it may eat too much data for your License to handle
+    - once youve indexed past that point, splunk stops letting you search for stuff
+    - it will continue to index but gets cranky
+    - cost is something like $1000/GB/day
+    - if you can avoid spending extra money, you are more valuable
+    - splunk becomes wayyy more powerful the more you tune it
+    - tune it more to make it more precise, learn more about your environment and tune out the noise
