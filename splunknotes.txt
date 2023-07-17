@@ -161,11 +161,11 @@ Statistics
 - standard deviation - statistic average away from the mean
 index=botsv2  earliest=08/01/2017:00:00:00  latest=08/31/2017:23:59:59 sourcetype="*" sourcetype="stream:ip"
 | stats  count by src_ip
-| eventstats avg(count) stdev(count)
+| eventstats avg(count) as avg stdev(count) as stdev
 | sort count desc
-| eval sigma=avg+(3*stdev)
-| eval toobig=if(count>sigma,1,0)
-| table src_ip count sigma toobig
+| eval deviation_threshold = avg+(2.5*stdev)
+| eval toobig=if(count>deviation_threshold,1,0)
+| table src_ip count deviation_threshold toobig
 | search toobig=1
 
 
