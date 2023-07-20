@@ -6,13 +6,13 @@ index=botsv2 | stats count by host
 index=botsv2  earliest=08/01/2017:00:00:00  latest=08/31/2017:23:59:59 sourcetype="stream:ip"
 
 index=botsv2
-| search sourcetype="stream.ip"
+| search sourcetype="stream:ip"
 | stats count by src_ip
 
 index=botsv2
 | stats count by sourcetype
 
-index=botsv2 source="WinEventLog:Security EventCode=4688
+index=botsv2 source="WinEventLog:Security" EventCode=4688
 | stats count by New_Process_Name
 | sort count desc
 
@@ -30,7 +30,7 @@ index=botsv2 source="WinEventLog:Security" EventCode=4688
 index=botsv2 source="WinEventLog:Security" EventCode=4688
 | timechart count by host
 
-index=botsv2 source="stream:tcp"
+index=botsv2 sourcetype="stream:tcp"
 | timechart count by src_ip
 
 
